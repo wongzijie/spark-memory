@@ -3,9 +3,13 @@ import sys
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.db import create_engine_and_sessionmaker
 from app.main import create_app
+from app.models import Base, RawCapture, User
 
 
 def pytest_asyncio_loop_factories(config, item):
@@ -43,3 +47,46 @@ async def client() -> AsyncClient:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as test_client:
             yield test_client
+
+
+@pytest.fixture
+async def db_session() -> AsyncSession:
+    engine, session_factory = create_engine_and_sessionmaker(get_settings())
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
+        await connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        await connection.run_sync(Base.metadata.create_all)
+
+    async with session_factory() as session:
+        yield session
+        await session.rollback()
+
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
+        await connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+    await engine.dispose()
+
+
+@pytest.fixture
+async def user(db_session: AsyncSession) -> User:
+    record = User(email="owner@example.com", password_hash="not-used-in-this-test")
+    db_session.add(record)
+    await db_session.flush()
+    return record
+
+
+@pytest.fixture
+async def raw_capture(db_session: AsyncSession, user: User) -> RawCapture:
+    record = RawCapture(
+        user_id=user.id,
+        telegram_bot_id="bot-1",
+        telegram_update_id=1,
+        telegram_message_id=2,
+        telegram_chat_id=3,
+        telegram_user_id=4,
+        raw_update={"update_id": 1},
+        original_text="原始内容  不修改",
+    )
+    db_session.add(record)
+    await db_session.flush()
+    return record
