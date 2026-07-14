@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 from sqlalchemy import func, select
 
-from app.models import ProcessingJob, RawCapture, User
+from app.models import JobState, ProcessingJob, RawCapture, User
 from app.telegram.client import TelegramClient
 
 TEST_PATH_SECRET = "test-path-secret-that-is-not-real-0001"
@@ -182,3 +182,52 @@ async def test_acknowledgement_runs_after_database_commit(
 
     assert response.status_code == 200
     assert observed_counts == [1]
+
+
+async def test_job_publication_runs_after_database_commit(
+    client, db_session, telegram_admin, telegram_headers, monkeypatch
+):
+    observed_counts = []
+
+    async def observe_commit(redis, job_id):
+        count = await db_session.scalar(select(func.count()).select_from(ProcessingJob))
+        observed_counts.append(count)
+
+    monkeypatch.setattr("app.telegram.router.publish_job", observe_commit, raising=False)
+    payload = deepcopy(TELEGRAM_UPDATE)
+    payload["update_id"] = 1005
+
+    response = await client.post(
+        f"/api/telegram/webhook/{TEST_PATH_SECRET}",
+        json=payload,
+        headers=telegram_headers,
+    )
+
+    assert response.status_code == 200
+    assert observed_counts == [1]
+
+
+async def test_redis_failure_keeps_capture_queued_and_returns_success(
+    client, db_session, telegram_admin, telegram_headers, monkeypatch
+):
+    calls = []
+
+    async def fail_publication(redis, job_id):
+        calls.append(job_id)
+        raise ConnectionError("redis unavailable")
+
+    monkeypatch.setattr("app.telegram.router.publish_job", fail_publication, raising=False)
+    payload = deepcopy(TELEGRAM_UPDATE)
+    payload["update_id"] = 1006
+
+    response = await client.post(
+        f"/api/telegram/webhook/{TEST_PATH_SECRET}",
+        json=payload,
+        headers=telegram_headers,
+    )
+
+    assert response.status_code == 200
+    assert len(calls) == 1
+    job = await db_session.scalar(select(ProcessingJob))
+    assert job is not None
+    assert job.state == JobState.QUEUED

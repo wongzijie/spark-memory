@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from app.captures.service import create_capture_from_update
+from app.jobs.dispatcher import publish_job
 from app.models import User
 from app.telegram.client import TelegramClient
 from app.telegram.schemas import TelegramUpdate
@@ -50,7 +51,7 @@ async def telegram_webhook(path_secret: str, request: Request) -> dict[str, obje
         user = await session.scalar(select(User).order_by(User.created_at).limit(1))
         if user is None:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
-        capture, _, created = await create_capture_from_update(
+        capture, job, created = await create_capture_from_update(
             session,
             user_id=user.id,
             bot_id=settings.telegram_bot_id,
@@ -58,6 +59,13 @@ async def telegram_webhook(path_secret: str, request: Request) -> dict[str, obje
             raw_update=raw_payload,
         )
         await session.commit()
+        job_id = job.id if job is not None else None
+
+    if created and job_id is not None:
+        try:
+            await publish_job(request.app.state.redis, job_id)
+        except Exception as exc:
+            logger.warning("Job %s publication failed: %s", job_id, type(exc).__name__)
 
     if created:
         try:
