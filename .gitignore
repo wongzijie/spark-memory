@@ -1,0 +1,27 @@
+.superpowers/
+spark-memory-architecture.png
+
+# Runtime secrets and local data
+.env
+.env.*
+!.env.example
+data/
+uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+coverage/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
