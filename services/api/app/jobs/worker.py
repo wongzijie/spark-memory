@@ -9,6 +9,7 @@ import uuid
 
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -73,6 +74,24 @@ async def ensure_consumer_group(redis: Redis) -> None:
             raise
 
 
+async def read_messages(
+    redis: Redis,
+    consumer: str,
+) -> list[tuple[str, list[tuple[str, dict[str, str]]]]]:
+    try:
+        return await redis.xreadgroup(
+            GROUP,
+            consumer,
+            streams={STREAM: ">"},
+            count=10,
+            block=5_000,
+        )
+    except RedisTimeoutError:
+        # redis-py can end a blocking stream read at the same boundary as Redis.
+        # An idle stream is a normal poll result, not a worker failure.
+        return []
+
+
 async def record_processing_failure(
     session_factory: async_sessionmaker[AsyncSession],
     job_id: uuid.UUID,
@@ -105,13 +124,7 @@ async def run_worker() -> None:
         last_recovery = time.monotonic()
 
         while True:
-            messages = await redis.xreadgroup(
-                GROUP,
-                consumer,
-                streams={STREAM: ">"},
-                count=10,
-                block=5_000,
-            )
+            messages = await read_messages(redis, consumer)
             for _, entries in messages:
                 for message_id, fields in entries:
                     try:

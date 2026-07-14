@@ -1,7 +1,10 @@
+from unittest.mock import AsyncMock
+
 import pytest
+from redis.exceptions import TimeoutError as RedisTimeoutError
 from sqlalchemy import func, select
 
-from app.jobs.worker import normalize_text, process_job
+from app.jobs.worker import normalize_text, process_job, read_messages
 from app.models import JobKind, JobState, NormalizedContent, ProcessingJob, RawCapture
 
 
@@ -81,3 +84,10 @@ async def test_non_text_job_fails_with_stable_error_code(db_session, user):
     assert result.state == JobState.FAILED
     assert result.last_error_code == "unsupported_content"
     assert result.attempts == 1
+
+
+async def test_idle_stream_timeout_is_treated_as_an_empty_poll():
+    redis = AsyncMock()
+    redis.xreadgroup.side_effect = RedisTimeoutError("idle stream")
+
+    assert await read_messages(redis, "worker-1") == []

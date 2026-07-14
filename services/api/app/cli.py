@@ -37,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def read_password(password_stdin: bool, stdin: TextIO) -> str:
     if password_stdin:
-        password = stdin.readline().rstrip("\r\n")
+        password = stdin.readline().removeprefix("\ufeff").rstrip("\r\n")
         if not password:
             raise CliError("Password from stdin must not be empty")
         return password

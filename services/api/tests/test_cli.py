@@ -57,6 +57,23 @@ def test_create_admin_reads_exactly_one_stdin_line(migrated_database, capsys):
     assert stream.read() == "this line must remain\n"
 
 
+def test_create_admin_accepts_powershell_utf8_bom(migrated_database, capsys):
+    exit_code = main(
+        ["create-admin", "--email", "owner@example.com", "--password-stdin"],
+        stdin=io.StringIO(f"\ufeff{PASSWORD}\r\n"),
+    )
+
+    assert exit_code == 0
+    engine = create_engine(get_settings().database_url)
+    try:
+        with Session(engine) as session:
+            user = session.scalar(select(User))
+            assert user is not None
+            assert verify_password(PASSWORD, user.password_hash)
+    finally:
+        engine.dispose()
+
+
 def test_create_admin_refuses_a_second_account(migrated_database, capsys):
     first = main(
         ["create-admin", "--email", "owner@example.com", "--password-stdin"],

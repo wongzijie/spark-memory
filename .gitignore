@@ -20,6 +20,8 @@ node_modules/
 .next/
 coverage/
 *.tsbuildinfo
+playwright-report/
+test-results/
 
 # Editors and operating systems
 .idea/
