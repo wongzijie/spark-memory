@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.2-pg18-bookworm
+        env:
+          POSTGRES_DB: spark_test
+          POSTGRES_USER: spark
+          POSTGRES_PASSWORD: spark-local-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U spark -d spark_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      SPARK_DATABASE_URL: postgresql+psycopg://spark:spark-local-only@127.0.0.1:5432/spark_test
+      SPARK_REDIS_URL: redis://127.0.0.1:6379/1
+      SPARK_LLM_API_KEY: test-llm-token-that-is-not-real-0000000001
+      SPARK_LLM_BASE_URL: https://llm.example.invalid/v1
+      SPARK_LLM_MODEL: mimo-v2.5-pro
+      SPARK_TAVILY_API_KEY: test-tavily-token-that-is-not-real-0001
+      SPARK_TAVILY_BASE_URL: https://api.tavily.com
+      SPARK_TELEGRAM_BOT_TOKEN: test-bot-token-that-is-not-real-0000000001
+      SPARK_TELEGRAM_BOT_ID: test-bot
+      SPARK_TELEGRAM_ALLOWED_USER_ID: "7788"
+      SPARK_TELEGRAM_WEBHOOK_PATH_SECRET: test-path-secret-that-is-not-real-0001
+      SPARK_TELEGRAM_WEBHOOK_HEADER_SECRET: test-header-secret-that-is-not-real-01
+      SPARK_PUBLIC_BASE_URL: https://example.invalid
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync --locked --all-groups
+        working-directory: services/api
+      - run: uv run alembic upgrade head
+        working-directory: services/api
+      - run: uv run ruff check app tests alembic
+        working-directory: services/api
+      - run: uv run ruff format --check app tests alembic
+        working-directory: services/api
+      - run: uv run pytest -v
+        working-directory: services/api
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir apps/web check
+      - run: pnpm --dir apps/web build
+      - run: docker compose config --quiet

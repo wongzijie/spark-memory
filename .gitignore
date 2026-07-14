@@ -19,9 +19,15 @@ __pycache__/
 node_modules/
 .next/
 coverage/
+*.tsbuildinfo
+playwright-report/
+test-results/
 
 # Editors and operating systems
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Isolated feature worktrees
+.worktrees/

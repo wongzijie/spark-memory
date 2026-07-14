@@ -9,11 +9,99 @@ Spark Memory 是一个正在设计和开发中的 **Agent 驱动多模态笔记�
 ## 项目状态
 
 > [!IMPORTANT]
-> 当前仓库处于 **MVP 设计阶段**。产品规格已经完成，应用代码尚未开始实现，因此现在还不能安装或运行。
+> 当前仓库已经交付 **Milestone 1：Telegram 文字捕捉垂直切片**。它可以通过 Docker Compose 运行：安全接收 Telegram 文字、不可变保存原始 Update、经 Redis Worker 异步标准化，并在受登录保护的中英双语 Dashboard 中显示。
 
-- 已完成：产品边界、系统架构、长期记忆模型、Agent 工作流、Dashboard 信息架构、安全方案和验收标准
-- 下一步：制定实施计划，并按可验证的垂直切片开发 MVP
+- **Current status:** Milestone 1 is runnable end to end. Telegram text is stored idempotently, normalized by a Redis Stream worker, and shown in an authenticated bilingual Dashboard.
+- 已完成：单管理员认证、Telegram 双 Secret 校验、发送者白名单、PostgreSQL/Redis 持久化、异步 Worker、Dashboard、Docker Compose、CI 与 Playwright 主路径测试
+- 下一步：Agent 分类与长期记忆编译，然后是多模态、Running-up 和 Tavily 联网跟进
 - 完整规格：[Spark Memory MVP Design](docs/superpowers/specs/2026-07-14-spark-memory-mvp-design.md)
+
+## 本地运行 / Run locally
+
+需要 Docker Desktop。把 `.env.example` 复制为 `.env`，并替换云端模型、Tavily、Telegram Bot Token、Telegram 用户 ID、Webhook 双 Secret 和公网 HTTPS 地址；不要提交 `.env`。
+
+Docker Desktop is required. Copy `.env.example` to `.env` and replace the cloud-model, Tavily, Telegram bot token, allowed Telegram user ID, both webhook secrets, and public HTTPS URL values. Never commit `.env`.
+
+当前云端模型配置采用 OpenAI-compatible 接口，通过 `SPARK_LLM_BASE_URL`、`SPARK_LLM_MODEL` 和 `SPARK_LLM_API_KEY` 注入；Tavily 使用 `SPARK_TAVILY_BASE_URL` 与 `SPARK_TAVILY_API_KEY`。这些配置会同时传入 API 和 Worker，但完整的 Agent 分类与联网跟进工作流仍属于后续里程碑。
+
+The cloud model uses an OpenAI-compatible endpoint configured through `SPARK_LLM_BASE_URL`, `SPARK_LLM_MODEL`, and `SPARK_LLM_API_KEY`. Tavily uses `SPARK_TAVILY_BASE_URL` and `SPARK_TAVILY_API_KEY`. Both API and Worker receive these values; the complete Agent organization and web-follow-up workflows remain later milestones.
+
+```powershell
+docker compose up -d --build
+
+$env:SPARK_ADMIN_PASSWORD = "choose-a-long-local-password"
+$env:SPARK_ADMIN_PASSWORD | docker compose exec -T api python -m app.cli create-admin --email owner@example.com --password-stdin
+```
+
+打开 [http://localhost:3000](http://localhost:3000)，使用刚创建的邮箱和密码登录。API readiness 位于 [http://localhost:8000/health/ready](http://localhost:8000/health/ready)。
+
+Open [http://localhost:3000](http://localhost:3000) and sign in with the account you just created. API readiness is available at [http://localhost:8000/health/ready](http://localhost:8000/health/ready).
+
+### 一键本地命令 / One-command local lifecycle
+
+将仓库的 `scripts` 目录加入 Windows 用户 PATH 后，可以在任意新终端运行：
+
+After adding the repository `scripts` directory to the Windows user PATH, run these commands from any new terminal:
+
+```powershell
+spark go      # 启动、构建并配置本地管理员 / start, build, and configure the admin
+spark reboot  # 强制重建并重启 / recreate and restart
+spark stop    # 停止服务但保留数据库卷 / stop while preserving database volumes
+```
+
+管理员邮箱和密码来自 Git 忽略的本机 `.env` 中的 `SPARK_ADMIN_EMAIL` 与 `SPARK_ADMIN_PASSWORD`。
+
+The administrator email and password come from `SPARK_ADMIN_EMAIL` and `SPARK_ADMIN_PASSWORD` in the Git-ignored local `.env`.
+
+### 注册 Telegram Webhook / Register the Telegram webhook
+
+确保 `.env` 中的 `SPARK_PUBLIC_BASE_URL` 是能转发到 API 8000 端口的 HTTPS 地址，然后执行：
+
+Make sure `SPARK_PUBLIC_BASE_URL` is an HTTPS origin that routes to API port 8000, then run:
+
+```powershell
+docker compose up -d
+docker compose exec api python -m app.cli register-webhook
+```
+
+### 验证与测试 / Verification and tests
+
+```powershell
+# Python API and worker
+Set-Location services/api
+uv sync --locked --all-groups
+uv run alembic upgrade head
+uv run ruff check app tests alembic
+uv run ruff format --check app tests alembic
+uv run pytest -v
+Set-Location ../..
+
+# Dashboard
+corepack pnpm install --frozen-lockfile
+corepack pnpm --dir apps/web check
+corepack pnpm --dir apps/web build
+
+# Real Telegram → Worker → Dashboard path against Compose defaults
+$env:E2E_API_URL = "http://127.0.0.1:8000"
+$env:E2E_WEB_URL = "http://127.0.0.1:3000"
+$env:E2E_WEBHOOK_PATH = "e2e-path-secret-0000000000000001"
+$env:E2E_WEBHOOK_HEADER = "e2e-header-secret-00000000000001"
+$env:E2E_ADMIN_EMAIL = "owner@example.com"
+$env:E2E_ADMIN_PASSWORD = "choose-a-long-local-password"
+corepack pnpm --dir apps/web exec playwright install chromium
+corepack pnpm --dir apps/web e2e
+```
+
+停止服务使用 `docker compose down`。`docker compose down -v` 会连同本地 PostgreSQL 与 Redis 数据一起删除。
+
+Use `docker compose down` to stop the stack. `docker compose down -v` also deletes local PostgreSQL and Redis data.
+
+### Milestone 1 尚未包含 / Not included yet
+
+- Settings 与用户自助 BYOK / user-managed Settings and BYOK
+- LLM 自动分类、知识图谱与 Living Wiki 编译 / LLM organization, knowledge graph, and Living Wiki compilation
+- 语音、手写、图片、文档与视频处理 / voice, handwriting, image, document, and video processing
+- Running-up、智能定时任务与 Tavily 联网更新 / Running-up, intelligent scheduling, and Tavily web follow-up
 
 ## 为什么做 Spark Memory
 
@@ -152,11 +240,11 @@ Key 会在服务端加密保存，浏览器只能看到掩码。后续版本将�
 - [x] Karpathy LLM Wiki + 时态知识图谱设计
 - [x] Telegram、Dashboard 和 Running-up 工作流
 - [x] 安全、备份和验收标准
-- [ ] 实施计划与任务拆分
-- [ ] 基础设施和数据模型
-- [ ] Telegram 文字捕捉垂直切片
+- [x] 实施计划与任务拆分
+- [x] 基础设施和数据模型
+- [x] Telegram 文字捕捉垂直切片
 - [ ] 多模态处理
-- [ ] Dashboard 记忆工作台
+- [x] Dashboard 文字捕捉 Feed
 - [ ] Running-up + Tavily
 - [ ] 部署、备份和故障验证
 

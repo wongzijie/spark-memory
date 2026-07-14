@@ -1,0 +1,113 @@
+x-api-environment: &api-environment
+  SPARK_APP_ENV: ${SPARK_APP_ENV:-development}
+  SPARK_DATABASE_URL: postgresql+psycopg://spark:${POSTGRES_PASSWORD:-spark-local-only}@postgres:5432/spark
+  SPARK_REDIS_URL: redis://redis:6379/0
+  SPARK_DEFAULT_TIMEZONE: ${SPARK_DEFAULT_TIMEZONE:-Asia/Shanghai}
+  SPARK_SESSION_COOKIE_NAME: ${SPARK_SESSION_COOKIE_NAME:-spark_session}
+  SPARK_SESSION_TTL_SECONDS: ${SPARK_SESSION_TTL_SECONDS:-604800}
+  SPARK_SESSION_COOKIE_SECURE: ${SPARK_SESSION_COOKIE_SECURE:-false}
+  SPARK_LLM_API_KEY: ${SPARK_LLM_API_KEY:-local-development-llm-token-not-valid}
+  SPARK_LLM_BASE_URL: ${SPARK_LLM_BASE_URL:-https://example.invalid/v1}
+  SPARK_LLM_MODEL: ${SPARK_LLM_MODEL:-mimo-v2.5-pro}
+  SPARK_TAVILY_API_KEY: ${SPARK_TAVILY_API_KEY:-local-development-tavily-token-not-valid}
+  SPARK_TAVILY_BASE_URL: ${SPARK_TAVILY_BASE_URL:-https://api.tavily.com}
+  SPARK_TELEGRAM_BOT_TOKEN: ${SPARK_TELEGRAM_BOT_TOKEN:-0000000000:local-development-token-not-valid}
+  SPARK_TELEGRAM_BOT_ID: ${SPARK_TELEGRAM_BOT_ID:-local-bot}
+  SPARK_TELEGRAM_ALLOWED_USER_ID: ${SPARK_TELEGRAM_ALLOWED_USER_ID:-7788}
+  SPARK_TELEGRAM_WEBHOOK_PATH_SECRET: ${SPARK_TELEGRAM_WEBHOOK_PATH_SECRET:-e2e-path-secret-0000000000000001}
+  SPARK_TELEGRAM_WEBHOOK_HEADER_SECRET: ${SPARK_TELEGRAM_WEBHOOK_HEADER_SECRET:-e2e-header-secret-00000000000001}
+  SPARK_PUBLIC_BASE_URL: ${SPARK_PUBLIC_BASE_URL:-http://localhost:8000}
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    environment:
+      POSTGRES_DB: spark
+      POSTGRES_USER: spark
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spark-local-only}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spark -d spark"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis_data:/data
+
+  api:
+    image: spark-memory-api:local
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment: *api-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  worker:
+    image: spark-memory-api:local
+    command: ["python", "-m", "app.jobs.worker"]
+    environment: *api-environment
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: spark-memory-web:local
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_PROXY_TARGET: http://api:8000
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/login"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
