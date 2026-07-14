@@ -20,8 +20,8 @@ def pytest_asyncio_loop_factories(config, item):
 @pytest.fixture
 def valid_settings_data() -> dict[str, object]:
     return {
-        "database_url": "postgresql+psycopg://spark:spark-local-only@127.0.0.1:5432/spark",
-        "redis_url": "redis://127.0.0.1:6379/0",
+        "database_url": "postgresql+psycopg://spark:spark-local-only@127.0.0.1:5432/spark_test",
+        "redis_url": "redis://127.0.0.1:6379/1",
         "llm_api_key": "test-llm-token-that-is-not-real-0000000001",
         "llm_base_url": "https://llm.example.invalid/v1",
         "llm_model": "mimo-v2.5-pro",

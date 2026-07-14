@@ -15,12 +15,12 @@ jobs:
       postgres:
         image: pgvector/pgvector:0.8.2-pg18-bookworm
         env:
-          POSTGRES_DB: spark
+          POSTGRES_DB: spark_test
           POSTGRES_USER: spark
           POSTGRES_PASSWORD: spark-local-only
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U spark -d spark"
+          --health-cmd "pg_isready -U spark -d spark_test"
           --health-interval 3s --health-timeout 3s --health-retries 20
       redis:
         image: redis:8-alpine
@@ -29,8 +29,8 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 3s --health-timeout 3s --health-retries 20
     env:
-      SPARK_DATABASE_URL: postgresql+psycopg://spark:spark-local-only@127.0.0.1:5432/spark
-      SPARK_REDIS_URL: redis://127.0.0.1:6379/0
+      SPARK_DATABASE_URL: postgresql+psycopg://spark:spark-local-only@127.0.0.1:5432/spark_test
+      SPARK_REDIS_URL: redis://127.0.0.1:6379/1
       SPARK_LLM_API_KEY: test-llm-token-that-is-not-real-0000000001
       SPARK_LLM_BASE_URL: https://llm.example.invalid/v1
       SPARK_LLM_MODEL: mimo-v2.5-pro

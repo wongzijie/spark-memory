@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.models import User
 
 PASSWORD = "correct horse battery staple"
+CONFIGURED_PASSWORD = "configured admin password"
 
 
 @pytest.fixture
@@ -101,6 +102,51 @@ def test_create_admin_rejects_mismatched_prompt_passwords(monkeypatch, migrated_
     captured = capsys.readouterr()
     assert exit_code != 0
     assert "do not match" in captured.err
+
+
+def test_configure_admin_creates_requested_email(migrated_database, capsys):
+    exit_code = main(
+        ["configure-admin", "--email", "configured@example.com", "--password-stdin"],
+        stdin=io.StringIO(f"{CONFIGURED_PASSWORD}\n"),
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "configured@example.com" in captured.out
+    assert CONFIGURED_PASSWORD not in captured.out
+    engine = create_engine(get_settings().database_url)
+    try:
+        with Session(engine) as session:
+            user = session.scalar(select(User))
+            assert user is not None
+            assert user.email == "configured@example.com"
+            assert verify_password(CONFIGURED_PASSWORD, user.password_hash)
+    finally:
+        engine.dispose()
+
+
+def test_configure_admin_updates_the_existing_account(migrated_database, capsys):
+    first = main(
+        ["create-admin", "--email", "owner@example.com", "--password-stdin"],
+        stdin=io.StringIO(f"{PASSWORD}\n"),
+    )
+    updated = main(
+        ["configure-admin", "--email", "configured@example.com", "--password-stdin"],
+        stdin=io.StringIO(f"{CONFIGURED_PASSWORD}\n"),
+    )
+
+    assert first == 0
+    assert updated == 0
+    engine = create_engine(get_settings().database_url)
+    try:
+        with Session(engine) as session:
+            users = list(session.scalars(select(User)))
+            assert len(users) == 1
+            assert users[0].email == "configured@example.com"
+            assert verify_password(CONFIGURED_PASSWORD, users[0].password_hash)
+            assert not verify_password(PASSWORD, users[0].password_hash)
+    finally:
+        engine.dispose()
 
 
 def test_register_webhook_command_uses_configured_bot(monkeypatch, capsys):

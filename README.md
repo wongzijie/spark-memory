@@ -37,6 +37,22 @@ $env:SPARK_ADMIN_PASSWORD | docker compose exec -T api python -m app.cli create-
 
 Open [http://localhost:3000](http://localhost:3000) and sign in with the account you just created. API readiness is available at [http://localhost:8000/health/ready](http://localhost:8000/health/ready).
 
+### 一键本地命令 / One-command local lifecycle
+
+将仓库的 `scripts` 目录加入 Windows 用户 PATH 后，可以在任意新终端运行：
+
+After adding the repository `scripts` directory to the Windows user PATH, run these commands from any new terminal:
+
+```powershell
+spark go      # 启动、构建并配置本地管理员 / start, build, and configure the admin
+spark reboot  # 强制重建并重启 / recreate and restart
+spark stop    # 停止服务但保留数据库卷 / stop while preserving database volumes
+```
+
+管理员邮箱和密码来自 Git 忽略的本机 `.env` 中的 `SPARK_ADMIN_EMAIL` 与 `SPARK_ADMIN_PASSWORD`。
+
+The administrator email and password come from `SPARK_ADMIN_EMAIL` and `SPARK_ADMIN_PASSWORD` in the Git-ignored local `.env`.
+
 ### 注册 Telegram Webhook / Register the Telegram webhook
 
 确保 `.env` 中的 `SPARK_PUBLIC_BASE_URL` 是能转发到 API 8000 端口的 HTTPS 地址，然后执行：

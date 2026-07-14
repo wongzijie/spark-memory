@@ -5,12 +5,13 @@ import sys
 from collections.abc import Coroutine, Sequence
 from typing import Any, TextIO
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from app.auth.security import hash_password
 from app.auth.service import normalize_email
 from app.config import get_settings
 from app.db import create_engine_and_sessionmaker
+from app.models import Session as UserSession
 from app.models import User
 from app.telegram.client import TelegramClient
 
@@ -31,6 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
     create_admin = subparsers.add_parser("create-admin")
     create_admin.add_argument("--email", required=True)
     create_admin.add_argument("--password-stdin", action="store_true")
+    configure_admin = subparsers.add_parser("configure-admin")
+    configure_admin.add_argument("--email", required=True)
+    configure_admin.add_argument("--password-stdin", action="store_true")
     subparsers.add_parser("register-webhook")
     return parser
 
@@ -72,6 +76,30 @@ async def create_admin_account(email: str, password: str) -> User:
         await engine.dispose()
 
 
+async def configure_admin_account(email: str, password: str) -> User:
+    settings = get_settings()
+    engine, session_factory = create_engine_and_sessionmaker(settings)
+    try:
+        async with session_factory() as session:
+            user = await session.scalar(select(User).order_by(User.created_at).limit(1))
+            if user is None:
+                user = User(
+                    email=normalize_email(email),
+                    password_hash=hash_password(password),
+                    timezone=settings.default_timezone,
+                )
+                session.add(user)
+            else:
+                user.email = normalize_email(email)
+                user.password_hash = hash_password(password)
+                await session.execute(delete(UserSession))
+            await session.commit()
+            await session.refresh(user)
+            return user
+    finally:
+        await engine.dispose()
+
+
 async def register_webhook_account() -> str:
     settings = get_settings()
     async with TelegramClient(settings.telegram_bot_token) as telegram:
@@ -99,6 +127,11 @@ def main(
             password = read_password(args.password_stdin, stdin)
             user = run_async(create_admin_account(args.email, password))
             print(f"Created admin {user.email} ({user.id})", file=output)
+            return 0
+        if args.command == "configure-admin":
+            password = read_password(args.password_stdin, stdin)
+            user = run_async(configure_admin_account(args.email, password))
+            print(f"Configured admin {user.email} ({user.id})", file=output)
             return 0
         if args.command == "register-webhook":
             bot_id = run_async(register_webhook_account())
