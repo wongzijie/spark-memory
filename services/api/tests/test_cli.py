@@ -84,3 +84,21 @@ def test_create_admin_rejects_mismatched_prompt_passwords(monkeypatch, migrated_
     captured = capsys.readouterr()
     assert exit_code != 0
     assert "do not match" in captured.err
+
+
+def test_register_webhook_command_uses_configured_bot(monkeypatch, capsys):
+    async def fake_register_webhook_account():
+        return "test-bot"
+
+    monkeypatch.setattr(
+        "app.cli.register_webhook_account",
+        fake_register_webhook_account,
+        raising=False,
+    )
+
+    exit_code = main(["register-webhook"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "test-bot" in captured.out
+    assert "test-bot-token" not in captured.out

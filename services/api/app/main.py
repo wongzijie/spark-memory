@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.db import create_engine_and_sessionmaker
 from app.health.router import router as health_router
 from app.redis import create_redis
+from app.telegram.router import router as telegram_router
 
 
 @asynccontextmanager
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Spark Memory API", version="0.1.0", lifespan=lifespan)
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(telegram_router)
     return app
 
 

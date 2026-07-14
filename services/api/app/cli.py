@@ -12,6 +12,7 @@ from app.auth.service import normalize_email
 from app.config import get_settings
 from app.db import create_engine_and_sessionmaker
 from app.models import User
+from app.telegram.client import TelegramClient
 
 
 class CliError(Exception):
@@ -30,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     create_admin = subparsers.add_parser("create-admin")
     create_admin.add_argument("--email", required=True)
     create_admin.add_argument("--password-stdin", action="store_true")
+    subparsers.add_parser("register-webhook")
     return parser
 
 
@@ -70,6 +72,17 @@ async def create_admin_account(email: str, password: str) -> User:
         await engine.dispose()
 
 
+async def register_webhook_account() -> str:
+    settings = get_settings()
+    async with TelegramClient(settings.telegram_bot_token) as telegram:
+        await telegram.set_webhook(
+            public_base_url=str(settings.public_base_url),
+            path_secret=settings.telegram_webhook_path_secret.get_secret_value(),
+            header_secret=settings.telegram_webhook_header_secret.get_secret_value(),
+        )
+    return settings.telegram_bot_id
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -86,6 +99,10 @@ def main(
             password = read_password(args.password_stdin, stdin)
             user = run_async(create_admin_account(args.email, password))
             print(f"Created admin {user.email} ({user.id})", file=output)
+            return 0
+        if args.command == "register-webhook":
+            bot_id = run_async(register_webhook_account())
+            print(f"Registered webhook for bot {bot_id}", file=output)
             return 0
         raise CliError(f"Unsupported command: {args.command}")
     except CliError as exc:
