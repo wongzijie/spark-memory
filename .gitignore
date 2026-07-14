@@ -19,6 +19,7 @@ __pycache__/
 node_modules/
 .next/
 coverage/
+*.tsbuildinfo
 
 # Editors and operating systems
 .idea/
