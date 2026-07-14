@@ -22,6 +22,11 @@ def valid_settings_data() -> dict[str, object]:
     return {
         "database_url": "postgresql+psycopg://spark:spark-local-only@127.0.0.1:5432/spark",
         "redis_url": "redis://127.0.0.1:6379/0",
+        "llm_api_key": "test-llm-token-that-is-not-real-0000000001",
+        "llm_base_url": "https://llm.example.invalid/v1",
+        "llm_model": "mimo-v2.5-pro",
+        "tavily_api_key": "test-tavily-token-that-is-not-real-0001",
+        "tavily_base_url": "https://api.tavily.com",
         "telegram_bot_token": "test-bot-token-that-is-not-real-0000000001",
         "telegram_bot_id": "test-bot",
         "telegram_allowed_user_id": 7788,

@@ -31,6 +31,11 @@ jobs:
     env:
       SPARK_DATABASE_URL: postgresql+psycopg://spark:spark-local-only@127.0.0.1:5432/spark
       SPARK_REDIS_URL: redis://127.0.0.1:6379/0
+      SPARK_LLM_API_KEY: test-llm-token-that-is-not-real-0000000001
+      SPARK_LLM_BASE_URL: https://llm.example.invalid/v1
+      SPARK_LLM_MODEL: mimo-v2.5-pro
+      SPARK_TAVILY_API_KEY: test-tavily-token-that-is-not-real-0001
+      SPARK_TAVILY_BASE_URL: https://api.tavily.com
       SPARK_TELEGRAM_BOT_TOKEN: test-bot-token-that-is-not-real-0000000001
       SPARK_TELEGRAM_BOT_ID: test-bot
       SPARK_TELEGRAM_ALLOWED_USER_ID: "7788"

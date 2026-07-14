@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     session_cookie_name: str = "spark_session"
     session_ttl_seconds: int = 604_800
     session_cookie_secure: bool = False
+    llm_api_key: SecretStr = Field(min_length=20)
+    llm_base_url: AnyHttpUrl
+    llm_model: str = Field(min_length=1)
+    tavily_api_key: SecretStr = Field(min_length=20)
+    tavily_base_url: AnyHttpUrl = "https://api.tavily.com"
     telegram_bot_token: SecretStr = Field(min_length=32)
     telegram_bot_id: str = Field(min_length=1)
     telegram_allowed_user_id: int = Field(gt=0)
@@ -42,6 +47,11 @@ class Settings(BaseSettings):
 
         values = (
             self.database_url,
+            self.llm_api_key.get_secret_value(),
+            str(self.llm_base_url),
+            self.llm_model,
+            self.tavily_api_key.get_secret_value(),
+            str(self.tavily_base_url),
             self.telegram_bot_token.get_secret_value(),
             self.telegram_bot_id,
             self.telegram_webhook_path_secret.get_secret_value(),

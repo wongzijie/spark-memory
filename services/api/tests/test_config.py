@@ -25,6 +25,24 @@ def test_settings_default_timezone_is_shanghai(valid_settings_data):
     assert settings.default_timezone == "Asia/Shanghai"
 
 
+def test_settings_expose_external_provider_configuration(valid_settings_data):
+    values = valid_settings_data | {
+        "llm_api_key": "test-llm-token-that-is-long-enough",
+        "llm_base_url": "https://llm.example.com/v1",
+        "llm_model": "mimo-v2.5-pro",
+        "tavily_api_key": "test-tavily-token-that-is-long-enough",
+        "tavily_base_url": "https://api.tavily.com",
+    }
+
+    settings = Settings(**values, _env_file=None)
+
+    assert settings.llm_api_key.get_secret_value() == values["llm_api_key"]
+    assert str(settings.llm_base_url) == "https://llm.example.com/v1"
+    assert settings.llm_model == "mimo-v2.5-pro"
+    assert settings.tavily_api_key.get_secret_value() == values["tavily_api_key"]
+    assert str(settings.tavily_base_url) == "https://api.tavily.com/"
+
+
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [

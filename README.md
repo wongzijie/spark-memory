@@ -18,9 +18,13 @@ Spark Memory 是一个正在设计和开发中的 **Agent 驱动多模态笔记�
 
 ## 本地运行 / Run locally
 
-需要 Docker Desktop。真实接入 Telegram 前，把 `.env.example` 复制为 `.env`，并替换 Bot Token、Telegram 用户 ID、Webhook 双 Secret 和公网 HTTPS 地址；不要提交 `.env`。
+需要 Docker Desktop。把 `.env.example` 复制为 `.env`，并替换云端模型、Tavily、Telegram Bot Token、Telegram 用户 ID、Webhook 双 Secret 和公网 HTTPS 地址；不要提交 `.env`。
 
-Docker Desktop is required. Before connecting a real Telegram Bot, copy `.env.example` to `.env` and replace the bot token, allowed Telegram user ID, both webhook secrets, and the public HTTPS URL. Never commit `.env`.
+Docker Desktop is required. Copy `.env.example` to `.env` and replace the cloud-model, Tavily, Telegram bot token, allowed Telegram user ID, both webhook secrets, and public HTTPS URL values. Never commit `.env`.
+
+当前云端模型配置采用 OpenAI-compatible 接口，通过 `SPARK_LLM_BASE_URL`、`SPARK_LLM_MODEL` 和 `SPARK_LLM_API_KEY` 注入；Tavily 使用 `SPARK_TAVILY_BASE_URL` 与 `SPARK_TAVILY_API_KEY`。这些配置会同时传入 API 和 Worker，但完整的 Agent 分类与联网跟进工作流仍属于后续里程碑。
+
+The cloud model uses an OpenAI-compatible endpoint configured through `SPARK_LLM_BASE_URL`, `SPARK_LLM_MODEL`, and `SPARK_LLM_API_KEY`. Tavily uses `SPARK_TAVILY_BASE_URL` and `SPARK_TAVILY_API_KEY`. Both API and Worker receive these values; the complete Agent organization and web-follow-up workflows remain later milestones.
 
 ```powershell
 docker compose up -d --build
