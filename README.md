@@ -1,5 +1,7 @@
 # Spark Memory
 
+![Spark Memory：多模态长期记忆系统的MVP设计，应用尚未实现](docs/assets/showcase/cover.png)
+
 > 先捕捉，再整理。让 Agent 帮你连接、维护和跟进记忆。
 
 Spark Memory 是一个正在设计和开发中的 **Agent 驱动多模态笔记本**。它面向不愿在记录灵感前先分类的人：用户只管把转瞬即逝的想法发进来，系统负责在之后理解内容、建立关联、更新长期知识，并主动跟进需要持续关注的事项。
@@ -14,6 +16,14 @@ Spark Memory 是一个正在设计和开发中的 **Agent 驱动多模态笔记�
 - 已完成：产品边界、系统架构、长期记忆模型、Agent 工作流、Dashboard 信息架构、安全方案和验收标准
 - 下一步：制定实施计划，并按可验证的垂直切片开发 MVP
 - 完整规格：[Spark Memory MVP Design](docs/superpowers/specs/2026-07-14-spark-memory-mvp-design.md)
+
+## 设计图：从原始输入到长期记忆
+
+![设计图：从原始输入到长期记忆，流程示意而非运行截图](docs/assets/showcase/workflow.png)
+
+**概念流程图，非运行界面。** 当前仓库只有设计与规格，没有已经可以安装的应用；图中 Telegram、编译器、Wiki 和 Running-up 都是拟实现的模块。
+
+[查看全部图片与来源](docs/assets/showcase/README.md)
 
 ## 为什么做 Spark Memory
 
@@ -167,3 +177,7 @@ Key 会在服务端加密保存，浏览器只能看到掩码。后续版本将�
 ## License
 
 本仓库目前尚未添加开源许可证。在 `LICENSE` 文件加入之前，仓库内容仅供查看与讨论，保留所有权利。
+
+## 更多项目
+
+[A800 动量回测](https://github.com/wongzijie/stock_database) · [OpenClaw 编排经验](https://github.com/wongzijie/OpenClaw-Experience) · [Snapshot 截图工具](https://github.com/wongzijie/Snapshot) · [Buffett Archive 本地检索](https://github.com/wongzijie/buffett-archive) · [相册快送](https://github.com/wongzijie/album-send)

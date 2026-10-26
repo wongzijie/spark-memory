@@ -1,0 +1,29 @@
+{
+  "project": "spark-memory",
+  "source_revision": "ec5bba4685105da18e2b5c22a6c859ed0f50ae96",
+  "generated_date": "2026-10-26",
+  "status": "DESIGN ONLY / APPLICATION NOT IMPLEMENTED",
+  "source_files": [
+    "README.md",
+    "docs/superpowers/specs/2026-07-14-spark-memory-mvp-design.md"
+  ],
+  "images": [
+    {
+      "path": "cover.png",
+      "bytes": 53611,
+      "sha256": "3764159a07eab0e640e51ba2708e87e64c7cdd36532d5e7daed0438bf0a0d792"
+    },
+    {
+      "path": "workflow.png",
+      "bytes": 76848,
+      "sha256": "ec62491bcbf235ee64374069c8606ccea0c7343a28a09e3d81f2a83f9d50d726"
+    },
+    {
+      "path": "social-preview.png",
+      "bytes": 53611,
+      "sha256": "3764159a07eab0e640e51ba2708e87e64c7cdd36532d5e7daed0438bf0a0d792"
+    }
+  ],
+  "verification_scope": "Source/README review and visual inspection; application runtime not retested",
+  "illustration_notice": "Workflow illustration, not an application screenshot"
+}
